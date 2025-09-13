@@ -1,5 +1,5 @@
 import Fastify from "fastify";
-import formsRoutes from "./handlers/forms";
+import formsRoutes from "./feature/form/route";
 
 const server = Fastify({ logger: true });
 

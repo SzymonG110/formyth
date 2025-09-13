@@ -1,41 +1,33 @@
 import { FastifyInstance } from "fastify";
-import { formSchema, Form } from "../schemas/form";
-import * as formsStorage from "../storage/formsStorage";
-import * as responsesStorage from "../storage/formResponsesStorage";
 import { z } from "zod";
-
-const generateId = () => Math.random().toString(36).substring(2, 9);
+import { formSchema, Form } from "./schema";
+import { FORM } from "./repository";
 
 export default async function formsRoutes(fastify: FastifyInstance) {
-  // GET /forms - lista formularzy
   fastify.get("/forms", async (_req, reply) => {
-    const allForms = formsStorage.getAllForms();
+    const allForms = await FORM.getAll();
+
     return reply.send(allForms);
   });
 
-  // GET /forms/:id - pobierz formularz po id
   fastify.get<{ Params: { id: string } }>("/forms/:id", async (req, reply) => {
-    const form = formsStorage.getFormById(req.params.id);
+    const form = await FORM.getById(req.params.id);
+
     if (!form) {
       return reply.status(404).send({ error: "Form not found" });
     }
+
     return reply.send(form);
   });
 
-  // POST /forms - tworzenie nowego formularza
   fastify.post("/forms", async (req, reply) => {
     try {
-      // Wymuszamy typowanie req.body jako obiekt
       const body = req.body as object;
-
-      // Walidacja Zod (bez id)
       const parsed = formSchema.omit({ id: true }).parse(body);
 
-      const id = generateId();
-      const newForm: Form = { ...parsed, id };
+      const id = await FORM.create(parsed);
 
-      formsStorage.createForm(newForm);
-      return reply.status(201).send(newForm);
+      return reply.status(201).send({ id, ...parsed });
     } catch (error) {
       return reply.status(400).send({
         error: error instanceof Error ? error.message : "Invalid data",
@@ -43,15 +35,13 @@ export default async function formsRoutes(fastify: FastifyInstance) {
     }
   });
 
-  // PUT /forms/:id - aktualizacja formularza
   fastify.put<{ Params: { id: string } }>("/forms/:id", async (req, reply) => {
     try {
-      const existing = formsStorage.getFormById(req.params.id);
+      const existing = await FORM.getById(req.params.id);
       if (!existing) {
         return reply.status(404).send({ error: "Form not found" });
       }
 
-      // Wymuszamy typ obiektu na req.body, dodajemy id i walidujemy
       const body = req.body as object;
       const parsed = formSchema.parse({ ...body, id: req.params.id });
 
@@ -64,7 +54,6 @@ export default async function formsRoutes(fastify: FastifyInstance) {
     }
   });
 
-  // DELETE /forms/:id - usuwanie formularza
   fastify.delete<{ Params: { id: string } }>(
     "/forms/:id",
     async (req, reply) => {
@@ -76,7 +65,6 @@ export default async function formsRoutes(fastify: FastifyInstance) {
     },
   );
 
-  // Dodajemy walidację odpowiedzi na podstawie pól formularza
   function createResponseSchema(fields: Form["fields"]) {
     const shape: Record<string, any> = {};
 
@@ -108,7 +96,6 @@ export default async function formsRoutes(fastify: FastifyInstance) {
     return z.object(shape);
   }
 
-  // POST /forms/:id/responses - dodanie odpowiedzi
   fastify.post<{ Params: { id: string } }>(
     "/forms/:id/responses",
     async (req, reply) => {
@@ -125,7 +112,6 @@ export default async function formsRoutes(fastify: FastifyInstance) {
         const responseSchema = createResponseSchema(form.fields);
         const parsedAnswers = responseSchema.parse(body);
 
-        // Sprawdzenie czy odpowiedź nie jest pusta
         const nonEmptyAnswers = Object.entries(parsedAnswers).filter(
           ([_, val]) => val !== undefined && val !== null && val !== "",
         );
@@ -142,16 +128,13 @@ export default async function formsRoutes(fastify: FastifyInstance) {
         );
         return reply.status(201).send(savedResponse);
       } catch (error) {
-        return reply
-          .status(400)
-          .send({
-            error: error instanceof Error ? error.message : "Invalid data",
-          });
+        return reply.status(400).send({
+          error: error instanceof Error ? error.message : "Invalid data",
+        });
       }
     },
   );
 
-  // GET /forms/:id/responses - pobranie odpowiedzi dla formularza
   fastify.get<{ Params: { id: string } }>(
     "/forms/:id/responses",
     async (req, reply) => {
