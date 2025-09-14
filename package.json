@@ -10,7 +10,10 @@
     "db:studio": "drizzle-kit studio",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "author": "",
+  "author": {
+    "name": "Szymon Górnikowski",
+    "url": "https://gornikowski.pl"
+  },
   "license": "ISC",
   "devDependencies": {
     "@types/node": "^24.3.1",

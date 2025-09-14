@@ -4,7 +4,6 @@ import {
   text,
   boolean,
   jsonb,
-  foreignKey,
   serial,
 } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
@@ -18,7 +17,7 @@ export const users = pgTable("users", {
   password: text("password").notNull(),
 });
 
-export const form = pgTable("form", {
+export const form = pgTable("forms", {
   id: varchar("id", { length: 36 })
     .primaryKey()
     .default(sql`gen_random_uuid()`),

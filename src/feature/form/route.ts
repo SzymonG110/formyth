@@ -20,7 +20,7 @@ export default async function formsRoutes(fastify: FastifyInstance) {
     return reply.send(form);
   });
 
-  fastify.post("/forms", async (req, reply) => {
+  fastify.post("/forms", {}, async (req, reply) => {
     try {
       const body = req.body as object;
       const parsed = formSchema.omit({ id: true }).parse(body);
@@ -57,7 +57,7 @@ export default async function formsRoutes(fastify: FastifyInstance) {
   fastify.delete<{ Params: { id: string } }>(
     "/forms/:id",
     async (req, reply) => {
-      const deleted = formsStorage.deleteForm(req.params.id);
+      const deleted = FORM.delete(req.params.id);
       if (!deleted) {
         return reply.status(404).send({ error: "Form not found" });
       }
