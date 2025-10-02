@@ -4,7 +4,7 @@ import {
   text,
   boolean,
   jsonb,
-  serial,
+  timestamp,
 } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 
@@ -26,7 +26,9 @@ export const form = pgTable("forms", {
 });
 
 export const fields = pgTable("fields", {
-  id: serial("id").primaryKey(),
+  id: varchar("id", { length: 36 })
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
   formId: varchar("form_id", { length: 36 })
     .notNull()
     .references(() => form.id, { onDelete: "cascade" }),
@@ -35,4 +37,27 @@ export const fields = pgTable("fields", {
   label: varchar("label", { length: 255 }).default(""),
   required: boolean("required").default(false),
   validation: jsonb("validation").default("{}"),
+});
+
+export const formSubmissions = pgTable("form_submissions", {
+  id: varchar("id", { length: 36 })
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
+  formId: varchar("form_id", { length: 36 })
+    .notNull()
+    .references(() => form.id, { onDelete: "cascade" }),
+  submittedAt: timestamp("submitted_at").default(sql`now()`),
+});
+
+export const fieldAnswers = pgTable("field_answers", {
+  id: varchar("id", { length: 36 })
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
+  submissionId: varchar("submission_id", { length: 36 })
+    .notNull()
+    .references(() => formSubmissions.id, { onDelete: "cascade" }),
+  fieldId: varchar("field_id", { length: 36 })
+    .notNull()
+    .references(() => fields.id, { onDelete: "cascade" }),
+  value: text("value").notNull(),
 });

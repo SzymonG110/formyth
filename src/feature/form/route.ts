@@ -1,7 +1,9 @@
 import { FastifyInstance } from "fastify";
 import { z } from "zod";
-import { formSchema, Form } from "./schema";
-import { FORM } from "./repository";
+import { formSchema } from "./schema";
+import { FORM, RESPONSE } from "./repository";
+import { InferSelectModel } from "drizzle-orm";
+import { fields as dbFields } from "../../database/schema";
 
 export default async function formsRoutes(fastify: FastifyInstance) {
   fastify.get("/forms", async (_req, reply) => {
@@ -45,7 +47,7 @@ export default async function formsRoutes(fastify: FastifyInstance) {
       const body = req.body as object;
       const parsed = formSchema.parse({ ...body, id: req.params.id });
 
-      const updatedForm = formsStorage.updateForm(req.params.id, parsed);
+      const updatedForm = FORM.update(req.params.id, parsed);
       return reply.send(updatedForm);
     } catch (error) {
       return reply.status(400).send({
@@ -65,7 +67,7 @@ export default async function formsRoutes(fastify: FastifyInstance) {
     },
   );
 
-  function createResponseSchema(fields: Form["fields"]) {
+  function createResponseSchema(fields: InferSelectModel<typeof dbFields>[]) {
     const shape: Record<string, any> = {};
 
     for (const field of fields) {
@@ -100,7 +102,7 @@ export default async function formsRoutes(fastify: FastifyInstance) {
     "/forms/:id/responses",
     async (req, reply) => {
       const formId = req.params.id;
-      const form = formsStorage.getFormById(formId);
+      const form = await FORM.getById(formId);
 
       if (!form) {
         return reply.status(404).send({ error: "Form not found" });
@@ -122,10 +124,7 @@ export default async function formsRoutes(fastify: FastifyInstance) {
             .send({ error: "Answers cannot be empty", answers: {} });
         }
 
-        const savedResponse = responsesStorage.addResponse(
-          formId,
-          parsedAnswers,
-        );
+        const savedResponse = RESPONSE.create(formId, parsedAnswers);
         return reply.status(201).send(savedResponse);
       } catch (error) {
         return reply.status(400).send({
@@ -139,13 +138,13 @@ export default async function formsRoutes(fastify: FastifyInstance) {
     "/forms/:id/responses",
     async (req, reply) => {
       const formId = req.params.id;
-      const form = formsStorage.getFormById(formId);
+      const form = FORM.getById(formId);
 
       if (!form) {
         return reply.status(404).send({ error: "Form not found" });
       }
 
-      const responses = responsesStorage.getResponses(formId);
+      const responses = RESPONSE.getAllByFormId(formId);
       return reply.send(responses);
     },
   );
